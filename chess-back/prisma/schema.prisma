@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma/"
+  generatedFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Color {
+  WHITE
+  BLACK
+}
+
+enum GameStatus {
+  active
+  checkmate
+  stalemate
+  draw
+}
+
+model Game {
+  id String @id @default(uuid())
+
+  version Int @default(0)
+
+  fen String      // общеприятый формат записи состояния доски. Это снимок всей партии - где стоят фигуры в данный момент 
+  figures Json    // Json формат сохранения фигур его он нам даст библиотека chess.js
+
+  turn Color @default(WHITE) // чья сторона сейчас делает ход
+  status GameStatus @default(active) // текущий статус игры (ничья)
+
+  winner Color? // команда победителя
+
+  moves Move[]
+
+  createdAt DateTime @default(now())
+  updated DateTime @updatedAt
+
+  @@index([status])
+}
+
+model Move {
+  id String @id @default(uuid())
+
+  color Color // цвет фигуры, что делает ход
+
+  ply Int  // порядковый номер хода  
+  san String  // название шахматного хода (аля е4, с5 - координата на шахматной доске короче)
+  uci String  // нужно будет для Stockfish анализатора, запись шахматного хода в формате (откуда - куда)
+  fenAfter String // снапшот всей партии но только с измененной позицией фигуры
+
+  gameId String
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, ply])
+}
