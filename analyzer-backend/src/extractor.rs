@@ -60,7 +60,7 @@ impl Visitor for MovesStorage {
         movetext: &mut Self::Movetext,
         san_plus: SanPlus,
     ) -> ControlFlow<Self::Output> {
-        // Виртуальная доска в поле pos ходит на основе SAN хода
+        // Виртуальная доска (атрибут pos) ходит на основе SAN хода
         if let Ok(mv) = san_plus.san.to_move(&movetext.pos) {
             let uci_move = UciMove::from_standard(mv); // Ход перегоняется в UCI
             movetext.moves_uci.push(uci_move.to_string()); // Докидывается к "списку" ходов в структуре
