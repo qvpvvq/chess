@@ -6,5 +6,6 @@ import { NatsJetstreamModule } from '@app/nats-jetstream';
 @Module({
   imports: [PrismaModule, NatsJetstreamModule],
   providers: [OutboxService],
+  exports: [OutboxService],
 })
 export class OutboxModule {}

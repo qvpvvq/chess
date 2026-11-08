@@ -11,6 +11,8 @@ import { randomUUID } from 'crypto';
 import { MoveDto } from './dto/move.dto';
 import { Game, GameStatus, moveRole } from 'generated/prisma';
 import { Figure, NAMES, ROOK_CASTLE, toColor } from 'interfaces/chess.types';
+import { OutboxService } from 'src/outbox/outbox.service';
+import { chessPublishSubjects } from 'interfaces/chess.streams';
 
 function computeMove(gameData: Game, dto: MoveDto) {
   const chess = new Chess(gameData.fen);
@@ -67,7 +69,10 @@ function computeMove(gameData: Game, dto: MoveDto) {
 
 @Injectable()
 export class CoreGameLogicService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private outbox: OutboxService,
+  ) {}
 
   async startGame() {
     const chess = new Chess();
@@ -112,6 +117,7 @@ export class CoreGameLogicService {
           winner: status === GameStatus.checkmate ? gameData.turn : null,
           version: { increment: 1 },
         },
+        include: { moves: true },
       });
 
       if (!updatedGame)
@@ -128,6 +134,18 @@ export class CoreGameLogicService {
         },
       });
 
+      const movesUciHistory = updatedGame.moves.map((m) => m.uci);
+
+      const event = {
+        gameId: updatedGame.id,
+
+        version: updatedGame.version,
+        fen: updatedGame.fen,
+        color: updatedGame.turn,
+        history: movesUciHistory,
+      };
+
+      await this.outbox.enqueue(trans, chessPublishSubjects.request, event);
       return updatedGame;
     });
 

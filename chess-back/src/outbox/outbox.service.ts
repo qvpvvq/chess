@@ -1,4 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from 'generated/prisma';
 
 @Injectable()
-export class OutboxService {}
+export class OutboxService {
+  async enqueue(
+    trans: Prisma.TransactionClient,
+    type: string,
+    payload: object,
+  ) {
+    await trans.outbox.create({ data: { type, payload: payload as any } });
+  }
+}
