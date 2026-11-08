@@ -9,8 +9,61 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { Chess, Move } from 'chess.js';
 import { randomUUID } from 'crypto';
 import { MoveDto } from './dto/move.dto';
-import { GameStatus } from 'generated/prisma';
+import { Game, GameStatus, moveRole } from 'generated/prisma';
 import { Figure, NAMES, ROOK_CASTLE, toColor } from 'interfaces/chess.types';
+
+function computeMove(gameData: Game, dto: MoveDto) {
+  const chess = new Chess(gameData.fen);
+
+  // делаем ход - валидируем
+  let move: Move;
+  try {
+    move = chess.move({
+      from: dto.from,
+      to: dto.to,
+      promotion: dto.promotion || 'q',
+    }); // проверяем валидность хода
+  } catch {
+    throw new BadRequestException('Нелегальный ход');
+  }
+
+  const figures = (gameData.figures as unknown as Figure[]).map((f) => ({
+    ...f, // берем массив фигур из сессии - типизируем (тк в prisma сохраняется просто JSON)
+  }));
+
+  // поедание фигуры
+  let captured: Figure | null = null;
+  if (move.isCapture()) {
+    // при взятии на проходе съеденная пешка стоит не на клетке "to"
+    const square = move.isEnPassant() ? dto.to[0] + dto.from[1] : dto.to;
+    captured = figures.find((f) => f.position === square)!;
+    captured.position = null;
+  }
+
+  // рокировка
+  if (move.isKingsideCastle() || move.isQueensideCastle()) {
+    const side = move.isKingsideCastle() ? 'king' : 'queen';
+    const [rookFrom, rookTo] = ROOK_CASTLE[move.color][side];
+    figures.find((f) => f.position === rookFrom)!.position = rookTo;
+  }
+
+  // перемещение фигуры
+  const movingFigure = figures.find((f) => f.position === dto.from)!;
+  movingFigure.position = dto.to;
+  if (move.isPromotion()) {
+    movingFigure.name = NAMES[move.promotion!];
+  }
+
+  const status = chess.isCheckmate()
+    ? GameStatus.checkmate
+    : chess.isStalemate()
+      ? GameStatus.stalemate
+      : chess.isDraw()
+        ? GameStatus.draw
+        : GameStatus.active;
+
+  return { figures, status, captured, chess, move };
+}
 
 @Injectable()
 export class CoreGameLogicService {
@@ -43,54 +96,10 @@ export class CoreGameLogicService {
     if (gameData.status !== GameStatus.active)
       throw new BadRequestException('Партия завершена');
 
-    const chess = new Chess(gameData.fen);
-
-    // делаем ход - валидируем
-    let move: Move;
-    try {
-      move = chess.move({
-        from: dto.from,
-        to: dto.to,
-        promotion: dto.promotion || 'q',
-      }); // проверяем валидность хода
-    } catch {
-      throw new BadRequestException('Нелегальный ход');
-    }
-
-    const figures = (gameData.figures as unknown as Figure[]).map((f) => ({
-      ...f, // берем массив фигур из сессии - типизируем (тк в prisma сохраняется просто JSON)
-    }));
-
-    // поедание фигуры
-    let captured: Figure | null = null;
-    if (move.isCapture()) {
-      // при взятии на проходе съеденная пешка стоит не на клетке "to"
-      const square = move.isEnPassant() ? dto.to[0] + dto.from[1] : dto.to;
-      captured = figures.find((f) => f.position === square)!;
-      captured.position = null;
-    }
-
-    // рокировка
-    if (move.isKingsideCastle() || move.isQueensideCastle()) {
-      const side = move.isKingsideCastle() ? 'king' : 'queen';
-      const [rookFrom, rookTo] = ROOK_CASTLE[move.color][side];
-      figures.find((f) => f.position === rookFrom)!.position = rookTo;
-    }
-
-    // перемещение фигуры
-    const movingFigure = figures.find((f) => f.position === dto.from)!;
-    movingFigure.position = dto.to;
-    if (move.isPromotion()) {
-      movingFigure.name = NAMES[move.promotion!];
-    }
-
-    const status = chess.isCheckmate()
-      ? GameStatus.checkmate
-      : chess.isStalemate()
-        ? GameStatus.stalemate
-        : chess.isDraw()
-          ? GameStatus.draw
-          : GameStatus.active;
+    const { figures, chess, status, captured, move } = computeMove(
+      gameData,
+      dto,
+    );
 
     const gameUpdated = await this.prisma.$transaction(async (trans) => {
       const updatedGame = await trans.game.update({
@@ -134,5 +143,63 @@ export class CoreGameLogicService {
     if (!game) throw new NotFoundException('Игра не найдена');
 
     return game;
+  }
+
+  async applyAiMove(
+    gameId: string,
+    dto: MoveDto,
+    author: moveRole,
+    expectedVersion?: number,
+  ) {
+    const gameData = await this.prisma.game.findUnique({
+      where: { id: gameId },
+    });
+
+    if (!gameData) throw new NotFoundException('Партия не найдена');
+
+    const aiTurn = gameData.aiColor === gameData.turn;
+    if (author === moveRole.AI && !aiTurn)
+      throw new ConflictException('Сейчас не очередь ИИ');
+    if (author === moveRole.USER && aiTurn)
+      throw new BadRequestException('Сейчас ходит ИИ');
+
+    if (!!expectedVersion && gameData.version !== expectedVersion) {
+      throw new ConflictException('Позиция партии изменилась');
+    }
+
+    const { figures, chess, status, captured, move } = computeMove(
+      gameData,
+      dto,
+    );
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.game.updateMany({
+        where: { id: gameId, version: gameData.version },
+        data: {
+          fen: chess.fen(),
+          figures: figures as any,
+          turn: toColor(chess.turn()),
+          status,
+          winner: status === GameStatus.checkmate ? gameData.turn : null,
+          version: { increment: 1 },
+        },
+      });
+      if (count === 0) throw new ConflictException('Версия партии изменилась');
+
+      await tx.move.create({
+        data: {
+          gameId,
+          ply: gameData.version + 1,
+          color: gameData.turn,
+          role: author,
+          san: move.san,
+          uci: move.from + move.to + (move.promotion ?? ''),
+          fenAfter: chess.fen(),
+        },
+      });
+      return tx.game.findUniqueOrThrow({ where: { id: gameId } });
+    });
+
+    return { san: move.san, captured, game: updated };
   }
 }

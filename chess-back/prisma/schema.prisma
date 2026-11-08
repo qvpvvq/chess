@@ -26,6 +26,11 @@ enum GameStatus {
   draw
 }
 
+enum moveRole {
+  USER
+  AI
+}
+
 model Game {
   id String @id @default(uuid())
 
@@ -36,6 +41,8 @@ model Game {
 
   turn Color @default(WHITE) // чья сторона сейчас делает ход
   status GameStatus @default(active) // текущий статус игры (ничья)
+
+  aiColor Color? // цвет за который играет ИИ
 
   winner Color? // команда победителя
 
@@ -57,8 +64,26 @@ model Move {
   uci String  // нужно будет для Stockfish анализатора, запись шахматного хода в формате (откуда - куда)
   fenAfter String // снапшот всей партии но только с измененной позицией фигуры
 
+  role moveRole @default(USER)
+
   gameId String
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
   @@unique([gameId, ply])
+}
+
+model Outbox {
+  id String @id @default(uuid())
+
+  type      String    
+  payload   Json
+  sentAt    DateTime?
+  attempts  Int       @default(0)
+  lastError String?
+  createdAt DateTime  @default(now())
+
+  nextAttemptAt DateTime @default(now()) 
+
+  @@index([sentAt, createdAt])
+  @@map("outbox_events")
 }

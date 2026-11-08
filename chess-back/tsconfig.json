@@ -20,6 +20,14 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@app/nats-jetstream": [
+        "libs/nats-jetstream/src"
+      ],
+      "@app/nats-jetstream/*": [
+        "libs/nats-jetstream/src/*"
+      ]
+    }
   }
 }

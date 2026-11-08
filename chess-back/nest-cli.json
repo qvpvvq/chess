@@ -9,6 +9,18 @@
         "include": "../generated/**/*",
         "outDir": "dist/generated"
       }
-    ]
+    ],
+    "webpack": true
+  },
+  "projects": {
+    "nats-jetstream": {
+      "type": "library",
+      "root": "libs/nats-jetstream",
+      "entryFile": "index",
+      "sourceRoot": "libs/nats-jetstream/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/nats-jetstream/tsconfig.lib.json"
+      }
+    }
   }
 }
