@@ -1,5 +1,7 @@
 use std::io::Result;
 use stockfish::Stockfish;
+
+use crate::models::{MoveAnalysis, ParsedMove};
 pub struct Analyzer {
     engine: Stockfish,
 }
@@ -10,24 +12,37 @@ impl Analyzer {
         engine.set_threads(1)?;
         Ok(Self { engine })
     }
-    pub fn analyze_from_uci(mut self, moves: Vec<String>) -> std::io::Result<()> {
+    pub fn analyze_from_uci(
+        mut self,
+        moves: Vec<ParsedMove>,
+    ) -> std::io::Result<Vec<MoveAnalysis>> {
+        let mut results: Vec<MoveAnalysis> = Vec::new();
         self.engine.reset_position()?;
-        for (i, mv) in moves.iter().enumerate() {
-            let is_white_turn = i % 2 == 0;
+        for (i, mv) in moves.into_iter().enumerate() {
+            let uci_move = mv.move_uci;
             let engine_output = self.engine.go()?;
-            let best_move = engine_output.best_move();
+            if let Ok(_) = self.engine.play_move(&uci_move) {
+                println!("Сходило");
+            };
+            let best_move = engine_output.best_move().to_string();
             let move_rate = engine_output.eval().value();
+            let result = MoveAnalysis {
+                ply: i + 1,
+                chessmove: ParsedMove::new(uci_move, mv.move_san),
+                best_move: best_move,
+                eval: move_rate,
+            };
 
             println!(
                 " {} ход, {} полуход: {} | Лучший ход: {} | Оценка позиции белых: {}",
-                (i + 2) / 2,
-                i + 1,
-                mv,
-                best_move,
-                move_rate
+                (&result.ply + 2) / 2,
+                &result.ply,
+                &result.chessmove.move_uci,
+                &result.best_move,
+                &result.eval
             );
-            self.engine.play_move(mv)?;
+            results.push(result);
         }
-        Ok(())
+        Ok(results)
     }
 }

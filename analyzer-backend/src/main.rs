@@ -1,53 +1,50 @@
 // use axum::{Router, routing::get};
 mod analyzer;
 mod extractor;
+mod models;
 use analyzer::Analyzer;
+
+use crate::models::ParsedMove;
 fn main() {
     let pgn = r#"
-        [Event "Live Chess"]
-        [Site "Chess.com"]
-        [Date "2026.11.07"]
-        [Round "-"]
-        [White "chuxan228"]
-        [Black "nomercurial"]
-        [Result "0-1"]
-        [CurrentPosition "rn6/pp4p1/2p3k1/8/4K3/8/PP4Pr/5R2 w - - 2 30"]
-        [Timezone "UTC"]
-        [ECO "B02"]
-        [ECOUrl "https://www.chess.com/openings/Alekhines-Defense-Scandinavian-Variation"]
-        [UTCDate "2026.11.07"]
-        [UTCTime "18:58:10"]
-        [WhiteElo "309"]
-        [BlackElo "328"]
-        [TimeControl "300"]
-        [Termination "nomercurial won on time"]
-        [StartTime "18:58:10"]
-        [EndDate "2026.11.07"]
-        [EndTime "19:07:14"]
-        [Link "https://www.chess.com/ru/analysis/game/live/186737219660/review?move=53&tab=review&classification=greatfind&autorun=true&utm_campaign=game_review_share"]
-        [WhiteUrl "https://www.chess.com/bundles/web/images/noavatar_l.84a92436.gif"]
-        [WhiteCountry "116"]
-        [WhiteTitle ""]
-        [BlackUrl "https://www.chess.com/bundles/web/images/noavatar_l.84a92436.gif"]
-        [BlackCountry "116"]
-        [BlackTitle ""]
+      [Event "Live Chess"]
+      [Site "Chess.com"]
+      [Date "2026.11.08"]
+      [Round "-"]
+      [White "nomercurial"]
+      [Black "Khalil_Ghimaji"]
+      [Result "1-0"]
+      [CurrentPosition "rn3rk1/p1p2ppQ/bp1bpq1n/6N1/3P4/P7/1PP2PPP/R1B1KB1R b KQ - 0 12"]
+      [Timezone "UTC"]
+      [ECO "D00"]
+      [ECOUrl "https://www.chess.com/openings/Queens-Pawn-Opening-Chigorin-Variation-2...e6"]
+      [UTCDate "2026.11.08"]
+      [UTCTime "00:08:30"]
+      [WhiteElo "409"]
+      [BlackElo "387"]
+      [TimeControl "600"]
+      [Termination "nomercurial won by checkmate"]
+      [StartTime "00:08:30"]
+      [EndDate "2026.11.08"]
+      [EndTime "00:14:23"]
+      [Link "https://www.chess.com/game/live/186751366954"]
 
-        1. e4 d5 2. Nc3 Nf6 3. d3 Bg4 4. f3 dxe4 5. dxe4 Bh5 6. Nd5 Bxf3 7. Nxf3 Nxe4 8.
-        Bd3 e6 9. Bxe4 exd5 10. Bxd5 Bb4+ 11. c3 c6 12. Bg5 Qa5 13. cxb4 Qxb4+ 14. Qd2
-        Qc5 15. Be4 O-O 16. Rc1 Qb5 17. Ne5 Re8 18. Rf1 Qxe5 19. Rxf7 Qxe4+ 20. Be3 Kxf7
-        21. Kd1 Qa4+ 22. Qc2 Qg4+ 23. Qe2 Rxe3 24. Qxg4 Rd3+ 25. Ke2 Rd5 26. Ke3 h5 27.
-        Qxh5+ Rxh5 $1 28. Ke4 Rxh2 29. Rf1+ Kg6 0-1
+      1. d4 {[%clk 0:09:57.1]} 1... e6 {[%clk 0:09:49.9]} 2. Nc3 {[%clk 0:09:54]} 2... d5 {[%clk 0:09:47.3]} 3. a3 {[%clk 0:09:51.9]} 3... Qf6 {[%clk 0:09:26.3]} 4. Nf3 {[%clk 0:09:46.5]} 4... Nh6 {[%clk 0:09:19.9]} 5. Ne5 {[%clk 0:09:45.6]} 5... Bd6 {[%clk 0:08:46.1]} 6. Nf3 {[%clk 0:09:20.3]} 6... O-O {[%clk 0:08:26.6]} 7. e4 {[%clk 0:09:13]} 7... dxe4 {[%clk 0:07:43]} 8. Nxe4 {[%clk 0:09:10.4]} 8... Qf5 {[%clk 0:07:07.6]} 9. Qd3 {[%clk 0:08:54.6]} 9... b6 {[%clk 0:06:49.8]} 10. Nfg5 {[%clk 0:08:46.9]} 10... Ba6 {[%clk 0:06:00.1]} 11. Nf6+ {[%clk 0:08:31]} 11... Qxf6 {[%clk 0:05:46.7]} 12. Qxh7# {[%clk 0:08:24.5]} 1-0
+
   "#;
 
     let uci = sraka(pgn).unwrap();
-    let analyzer = Analyzer::new("./bin/stockfish-linux-x86-64-universal").unwrap();
+    let analyzer = Analyzer::new("./bin/stockfish-windows-x86-64-universal").unwrap();
     analyzer.analyze_from_uci(uci).unwrap();
 }
-fn sraka(pgn: &str) -> Result<Vec<String>, String> {
+fn sraka(pgn: &str) -> Result<Vec<ParsedMove>, String> {
     if let Some((meta, moves)) = crate::extractor::parse_pgn(pgn) {
         println!("Белые: {:?}", meta.white.unwrap());
         println!("Черные: {:?}", meta.black.unwrap());
-        println!("Ходы в UCI: {:?}", moves);
+        println!(
+            "Ходы в UCI: {:?}",
+            moves.iter().map(|m| &m.move_uci).collect::<Vec<_>>()
+        );
         Ok(moves)
     } else {
         println!("Ошибка парсинга");

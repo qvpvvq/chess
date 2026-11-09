@@ -1,7 +1,7 @@
-use std::ops::ControlFlow;
-
+use crate::models::ParsedMove;
 use pgn_reader::{Reader, SanPlus, Visitor};
 use shakmaty::{Chess, Position, uci::UciMove};
+use std::ops::ControlFlow;
 #[derive(Default)]
 pub struct GameMetadata {
     pub white: Option<String>,
@@ -9,17 +9,16 @@ pub struct GameMetadata {
     pub result: Option<String>,
     pub event: Option<String>,
 }
-
 pub struct MovesStorage {
     meta: GameMetadata,
-    moves_uci: Vec<String>,
+    moves: Vec<ParsedMove>,
     pos: Chess,
 }
 
 impl Visitor for MovesStorage {
     type Tags = GameMetadata;
     type Movetext = MovesStorage;
-    type Output = (GameMetadata, Vec<String>);
+    type Output = (GameMetadata, Vec<ParsedMove>);
     // В начале партии теги ставятся дефолтные, то есть None
     fn begin_tags(&mut self) -> std::ops::ControlFlow<Self::Output, Self::Tags> {
         ControlFlow::Continue(GameMetadata::default())
@@ -47,12 +46,12 @@ impl Visitor for MovesStorage {
         ControlFlow::Continue(MovesStorage {
             meta: tags,
             pos: Chess::default(),
-            moves_uci: Vec::new(),
+            moves: Vec::new(),
         })
     }
     // В конце партии возвращает теги и ходы в формате UCI
     fn end_game(&mut self, movetext: Self::Movetext) -> Self::Output {
-        (movetext.meta, movetext.moves_uci)
+        (movetext.meta, movetext.moves)
     }
     // Обработка каждого хода
     fn san(
@@ -63,18 +62,21 @@ impl Visitor for MovesStorage {
         // Виртуальная доска (атрибут pos) ходит на основе SAN хода
         if let Ok(mv) = san_plus.san.to_move(&movetext.pos) {
             let uci_move = UciMove::from_standard(mv); // Ход перегоняется в UCI
-            movetext.moves_uci.push(uci_move.to_string()); // Докидывается к "списку" ходов в структуре
+            movetext.moves.push(ParsedMove::new(
+                uci_move.to_string(),
+                san_plus.san.to_string(),
+            )); // UCI и SAN докидывается к "списку" ходов в структуре
             movetext.pos.play_unchecked(mv); // Обновление доски
         }
         ControlFlow::Continue(())
     }
 }
-pub fn parse_pgn(pgn_str: &str) -> Option<(GameMetadata, Vec<String>)> {
+pub fn parse_pgn(pgn_str: &str) -> Option<(GameMetadata, Vec<ParsedMove>)> {
     let mut reader = Reader::new(pgn_str.as_bytes());
     let mut visitor = MovesStorage {
         meta: GameMetadata::default(),
         pos: Chess::default(),
-        moves_uci: Vec::new(),
+        moves: Vec::new(),
     };
     reader.read_game(&mut visitor).unwrap_or(None)
 }
