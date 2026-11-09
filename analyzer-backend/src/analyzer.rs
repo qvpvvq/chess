@@ -13,7 +13,7 @@ impl Analyzer {
         Ok(Self { engine })
     }
     pub fn analyze_from_uci(
-        mut self,
+        &mut self,
         moves: Vec<ParsedMove>,
     ) -> std::io::Result<Vec<MoveAnalysis>> {
         let mut results: Vec<MoveAnalysis> = Vec::new();
@@ -35,11 +35,11 @@ impl Analyzer {
 
             println!(
                 " {} ход, {} полуход: {} | Лучший ход: {} | Оценка позиции белых: {}",
-                (&result.ply + 2) / 2,
-                &result.ply,
-                &result.chessmove.move_uci,
-                &result.best_move,
-                &result.eval
+                (result.ply + 2) / 2,
+                result.ply,
+                result.chessmove.move_uci,
+                result.best_move,
+                result.eval
             );
             results.push(result);
         }

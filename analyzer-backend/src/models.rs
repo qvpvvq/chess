@@ -2,10 +2,10 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct MoveAnalysis {
-    pub ply: usize,            // 1, 2, 3...
-    pub chessmove: ParsedMove, // Ход, который был (пока можешь писать UCI)
-    pub best_move: String,     // Лучший ход от Стокфиша
-    pub eval: i32,             // Оценка (например, 35)
+    pub ply: usize,
+    pub chessmove: ParsedMove,
+    pub best_move: String,
+    pub eval: i32,
 }
 #[derive(Serialize, Debug)]
 pub struct ParsedMove {
