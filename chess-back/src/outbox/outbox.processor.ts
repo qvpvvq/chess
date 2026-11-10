@@ -17,7 +17,7 @@ interface Claimed {
 function subjectBuilder(type: string, payload: any): string | undefined {
   switch (type) {
     case chessPublishSubjects.request:
-      return chessPublishSubjectsBuilder(payload.id).response;
+      return chessPublishSubjectsBuilder(payload.id).request;
     default:
       return undefined;
   }

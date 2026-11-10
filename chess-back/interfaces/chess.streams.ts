@@ -10,7 +10,10 @@ export const chessPublishSubjects = {
 
 export const chessStream = {
   name: 'CHESS',
-  subjects: chessStreamSubjects,
+  subjects: [
+    chessStreamSubjects.requestAlias,
+    chessStreamSubjects.responseAlias,
+  ],
   consumers: {
     // Читает Python
     aiWorker: {

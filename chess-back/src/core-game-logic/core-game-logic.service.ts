@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -69,6 +70,8 @@ function computeMove(gameData: Game, dto: MoveDto) {
 
 @Injectable()
 export class CoreGameLogicService {
+  private logger = new Logger(CoreGameLogicService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private outbox: OutboxService,
