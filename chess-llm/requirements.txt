@@ -1,0 +1,4 @@
+nats-py>=2.7
+chess>=1.10
+openai>=1,<2
+python-dotenv>=1.0

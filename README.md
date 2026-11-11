@@ -10,4 +10,10 @@ npx prisma generate
 npx prisma migrate deploy
 npm run start:dev
 
-за env смотреть env.example в проекте
+cd chess-llm
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python -m app/worker.py
+
+за env смотреть env.example в папках

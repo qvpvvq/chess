@@ -92,7 +92,7 @@ export class CoreGameLogicService {
       }));
 
     return this.prisma.game.create({
-      data: { fen: chess.fen(), figures: figures },
+      data: { fen: chess.fen(), figures: figures, aiColor: toColor('b') },
     });
   }
 
