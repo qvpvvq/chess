@@ -63,7 +63,17 @@ export function GameBoard({ sessionId }: { sessionId: string }) {
         [chess, selected],
     );
 
+    if (!game) return <h1>Загрузка</h1>;
+
     const aiTurn = !!game?.aiColor && chess?.turn() === game.aiColor[0].toLowerCase(); // 'BLACK' → 'b'
+
+    const aiColor = game.aiColor ? (game.aiColor[0].toLowerCase() as 'w' | 'b') : null; // 'BLACK' → 'b'
+    const playerColor = aiColor ? (aiColor === 'w' ? 'b' : 'w') : null;
+
+    const isMine = (sq: Square) => {
+        const piece = chess?.get(sq);
+        return !!piece && (!playerColor || piece.color === playerColor);
+    };
 
     if (isLoading) return <p className="p-6">Загрузка партии…</p>;
     if (isError || !game || !chess)
@@ -71,6 +81,7 @@ export function GameBoard({ sessionId }: { sessionId: string }) {
 
     function tryMove(from: Square, to: Square): boolean {
         if (isPending || aiTurn || game!.status !== 'active') return false;
+        if (!isMine(from)) return false;
         try {
             new Chess(game!.fen).move({ from, to, promotion: 'q' }); // быстрая локальная проверка
         } catch {
@@ -116,11 +127,17 @@ export function GameBoard({ sessionId }: { sessionId: string }) {
                                 targetSquare
                                     ? tryMove(sourceSquare as Square, targetSquare as Square)
                                     : false,
+
                             onSquareClick: ({ square }) => {
                                 const sq = square as Square;
                                 if (selected && legalTargets.includes(sq)) tryMove(selected, sq);
-                                else setSelected(sq);
+                                else setSelected(isMine(sq) ? sq : null);
                             },
+                            canDragPiece: ({ square }) =>
+                                !!square &&
+                                !aiTurn &&
+                                game.status === 'active' &&
+                                isMine(square as Square),
                         }}
                     />
                 </div>
