@@ -4,7 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde_json::json;
-
+#[derive(Debug)]
 pub enum AppError {
     BadPgn(String),      // Ошибка парсинга (вина клиента)
     EngineError(String), // Ошибка Стокфиша (вина сервера)

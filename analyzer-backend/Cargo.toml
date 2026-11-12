@@ -11,3 +11,4 @@ pgn-reader = "0.29.1"
 shakmaty = "0.30.2"
 stockfish = "0.2.11"
 tokio = { version = "1.54.1", features = ["full"] }
+dotenvy = "0.15.7"
