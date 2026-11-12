@@ -6,6 +6,7 @@ import { Chess, Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { useChessMoveEvents } from '@/app/hooks/chess-move-events';
 
 export function GameBoard({ sessionId }: { sessionId: string }) {
     const queryClient = useQueryClient();
@@ -47,6 +48,8 @@ export function GameBoard({ sessionId }: { sessionId: string }) {
         onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
     });
 
+    const { aiError } = useChessMoveEvents(sessionId);
+
     const [selected, setSelected] = useState<Square | null>(null);
 
     const fen = game?.fen;
@@ -60,12 +63,14 @@ export function GameBoard({ sessionId }: { sessionId: string }) {
         [chess, selected],
     );
 
+    const aiTurn = !!game?.aiColor && chess?.turn() === game.aiColor[0].toLowerCase(); // 'BLACK' → 'b'
+
     if (isLoading) return <p className="p-6">Загрузка партии…</p>;
     if (isError || !game || !chess)
         return <p className="p-6 text-red-600">Не удалось загрузить партию</p>;
 
     function tryMove(from: Square, to: Square): boolean {
-        if (isPending || game!.status !== 'active') return false;
+        if (isPending || aiTurn || game!.status !== 'active') return false;
         try {
             new Chess(game!.fen).move({ from, to, promotion: 'q' }); // быстрая локальная проверка
         } catch {
@@ -121,11 +126,19 @@ export function GameBoard({ sessionId }: { sessionId: string }) {
                 </div>
 
                 <aside className="flex w-full flex-col gap-4 md:w-64">
-                    <div className="rounded-lg border p-3 font-medium">{status}</div>
-
                     {errorText && (
                         <div className="rounded-lg border border-red-300 p-3 text-sm text-red-600">
                             {errorText}
+                        </div>
+                    )}
+
+                    <div className="rounded-lg border p-3 font-medium">
+                        {aiTurn && game.status === 'active' ? 'ИИ думает…' : status}
+                    </div>
+
+                    {aiError && (
+                        <div className="rounded-lg border border-red-300 p-3 text-sm text-red-600">
+                            ИИ не смог сделать ход
                         </div>
                     )}
 

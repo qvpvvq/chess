@@ -26,7 +26,7 @@ export class CoreGameLogicController {
     return this.service.getWholeGame(id);
   }
 
-  @Sse('/game:id/events')
+  @Sse('/game/:id/events')
   async stream(@Param('id') gameid: string) {
     await this.service.getWholeGame(gameid);
     const ping = interval(25_000).pipe(

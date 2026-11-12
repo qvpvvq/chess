@@ -87,7 +87,9 @@ export class AiResponseConsumerService
         event.version,
       );
 
-      this.chessEvents.emit(event.gameId, 'move', result.game.version);
+      this.chessEvents.emit(event.gameId, 'move', {
+        version: result.game.version,
+      });
       return msg.ack();
     } catch (error) {
       this.logger.error(`failed to compile message - ${error}`);
