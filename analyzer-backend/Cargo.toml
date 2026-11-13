@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+deadpool = { version = "0.13.1", features = ["managed"] }
 axum = "0.8.9"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
@@ -12,3 +13,4 @@ shakmaty = "0.30.2"
 stockfish = "0.2.11"
 tokio = { version = "1.54.1", features = ["full"] }
 dotenvy = "0.15.7"
+async-nats = "0.52.0"
