@@ -55,4 +55,15 @@ impl Analyzer {
         }
         Ok(results)
     }
+    pub fn get_move_from_fen(&mut self, fen: String) -> Result<(String, i32), String> {
+        self.engine
+            .set_fen_position(&fen)
+            .map_err(|e| e.to_string())?;
+        let engine_move = self.engine.go().map_err(|e| e.to_string())?;
+        let (best_move, eval) = (
+            engine_move.best_move().to_owned(),
+            engine_move.eval().value(),
+        );
+        Ok((best_move, eval))
+    }
 }

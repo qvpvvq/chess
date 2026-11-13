@@ -1,5 +1,6 @@
 // use axum::{Router, routing::get};
 pub mod analyzer;
+mod bot_play;
 mod errors;
 mod extractor;
 mod models;
