@@ -6,6 +6,7 @@ import { NatsBootstrapModule } from './nats-bootstrap/nats-bootstrap.module';
 import { AiResponseConsumerModule } from './ai-response-consumer/ai-response-consumer.module';
 import { OutboxModule } from './outbox/outbox.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CommentResponseConsumerModule } from './comment-response-consumer/comment-response-consumer.module';
 @Module({
   imports: [
     PrismaModule,
@@ -18,6 +19,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     AiResponseConsumerModule,
     OutboxModule,
     ScheduleModule.forRoot(),
+    CommentResponseConsumerModule,
   ],
   controllers: [],
   providers: [],

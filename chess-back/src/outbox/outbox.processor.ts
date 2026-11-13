@@ -5,6 +5,8 @@ import { Interval } from '@nestjs/schedule';
 import {
   chessPublishSubjects,
   chessPublishSubjectsBuilder,
+  commentPublishSubjects,
+  commentPublishSubjectsBuilder,
 } from 'interfaces/chess.streams';
 
 interface Claimed {
@@ -18,6 +20,13 @@ function subjectBuilder(type: string, payload: any): string | undefined {
   switch (type) {
     case chessPublishSubjects.request:
       return chessPublishSubjectsBuilder(payload.id).request;
+    case commentPublishSubjects.request:
+      if (payload.type === 'MOVE') {
+        return commentPublishSubjectsBuilder(payload.gameId, payload.moveId)
+          .request;
+      } else if (payload.type === 'INTRO') {
+        return commentPublishSubjectsBuilder(payload.gameId).request;
+      }
     default:
       return undefined;
   }
@@ -47,7 +56,7 @@ export class OutboxPublisher {
           if (!subject) throw new Error(`unknown outbox type: ${ev.type}`);
 
           await this.JSService.publishMessage(subject, ev.payload, ev.id);
-          this.logger.debug(`succesfully published`);
+          this.logger.debug(`succesfully published - ${subject}`);
           await this.prisma.outbox.update({
             where: { id: ev.id },
             data: { sentAt: new Date(), lastError: null },

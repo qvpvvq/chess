@@ -13,6 +13,7 @@ import {
   JetStreamClient,
   jetstreamManager,
   JetStreamManager,
+  PriorityPolicy,
   ReplayPolicy,
   RetentionPolicy,
   StorageType,
@@ -81,6 +82,9 @@ export class NatsJetstreamService implements OnModuleInit, OnModuleDestroy {
     streamName: string,
     consumerName: string,
     subjectToConsumeFrom: string,
+
+    priorityPolicy?: PriorityPolicy,
+    priorityGroup?: string[],
   ) {
     const params = {
       durable_name: consumerName,
@@ -91,13 +95,16 @@ export class NatsJetstreamService implements OnModuleInit, OnModuleDestroy {
       max_deliver: 5,
       backoff: [nanos(10_000), nanos(20_000), nanos(30_000)],
       max_ack_pending: 90,
+
+      ...(priorityGroup && { priority_groups: priorityGroup }),
+      ...(priorityPolicy && { priority_policy: priorityPolicy }),
     };
 
     let exists = true;
 
     try {
       await this.JSManager.consumers.info(streamName, consumerName);
-    } catch (err) {
+    } catch {
       exists = false;
     }
 

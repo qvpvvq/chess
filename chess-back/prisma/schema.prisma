@@ -46,7 +46,10 @@ model Game {
 
   winner Color? // команда победителя
 
-  moves Move[]
+  moves Move[] // история ходов
+
+  persona String? // это промпт личности комментатора игры нужна для llm для отыгровки персонажа
+  comments String[] @default([]) // хронология комментариев игры
 
   createdAt DateTime @default(now())
   updated DateTime @updatedAt
@@ -65,6 +68,9 @@ model Move {
   fenAfter String // снапшот всей партии но только с измененной позицией фигуры
 
   role moveRole @default(USER)
+
+  comment String? // коментарий ии на ход
+  evalCp Int? // оценка хода сантипешки с точки зрения белых
 
   gameId String
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)

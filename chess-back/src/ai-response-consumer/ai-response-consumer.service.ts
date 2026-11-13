@@ -44,7 +44,7 @@ export class AiResponseConsumerService
   async onApplicationBootstrap() {
     const consumer = await this.JSService.JSClient.consumers.get(
       chessStream.name,
-      chessStream.consumers.aiResponses.durable,
+      chessStream.consumers.engineResponses.durable,
     );
 
     this.messages = await consumer.consume({ max_messages: 20 });
@@ -85,6 +85,7 @@ export class AiResponseConsumerService
         dto,
         moveRole.AI,
         event.version,
+        event.evalCp,
       );
 
       this.chessEvents.emit(event.gameId, 'move', {

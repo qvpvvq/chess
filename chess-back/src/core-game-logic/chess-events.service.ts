@@ -5,7 +5,11 @@ import { filter, map, Subject } from 'rxjs';
 export class ChessEventsService {
   private bus = new Subject<{ gameId: string; event: MessageEvent }>();
 
-  emit(gameId: string, type: 'move' | 'ai_error', data: unknown = {}) {
+  emit(
+    gameId: string,
+    type: 'move' | 'ai_error' | 'comment',
+    data: unknown = {},
+  ) {
     this.bus.next({ gameId, event: { type, data } as MessageEvent });
   }
 

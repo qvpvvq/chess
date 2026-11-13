@@ -1,11 +1,12 @@
+// поток для игры с движком (request - ходы игрока, response - ответные ходы движка)
 const chessStreamSubjects = {
-  requestAlias: 'chess.ai.request.>',
-  responseAlias: 'chess.ai.response.>',
+  requestAlias: 'chess.engine.request.>',
+  responseAlias: 'chess.engine.response.>',
 };
 
 export const chessPublishSubjects = {
-  request: 'chess.ai.request',
-  response: 'chess.ai.response',
+  request: 'chess.engine.request',
+  response: 'chess.engine.response',
 };
 
 export const chessStream = {
@@ -15,14 +16,14 @@ export const chessStream = {
     chessStreamSubjects.responseAlias,
   ],
   consumers: {
-    // Читает Python
-    aiWorker: {
-      durable: 'ai_worker',
+    // Читает RUST с StockFish
+    engineWorker: {
+      durable: 'engine_worker',
       filter: chessStreamSubjects.requestAlias,
     },
     // Читает Nest
-    aiResponses: {
-      durable: 'ai_response',
+    engineResponses: {
+      durable: 'engine_response',
       filter: chessStreamSubjects.responseAlias,
     },
   },
@@ -45,5 +46,72 @@ export interface ChessRequestEvent {
 }
 
 export type ChessResponseEvent =
-  | { gameId: string; version: number; uci: string }
+  | { gameId: string; version: number; uci: string; evalCp: number }
   | { gameId: string; version: number; error: string };
+
+// Поток ии комментатора игры (request - запрос на комментирование response - комментарий ии)
+
+const commentStreamSubjects = {
+  requestAlias: 'chess.comment.request.>',
+  responseAlias: 'chess.comment.response.>',
+};
+
+export const commentPublishSubjects = {
+  request: 'chess.comment.request',
+  response: 'chess.comment.response',
+};
+
+export const commentStream = {
+  name: 'CHESS_COMMENTS',
+  subjects: [
+    commentStreamSubjects.requestAlias,
+    commentStreamSubjects.responseAlias,
+  ],
+  consumers: {
+    commentResponse: {
+      durable: 'comment_response',
+      filter: commentStreamSubjects.responseAlias, // консьюмит Nest
+    },
+    commentRequest: {
+      durable: 'comment_request',
+      filter: commentStreamSubjects.requestAlias, // консьюмит python llm
+    },
+  },
+};
+
+export const commentPublishSubjectsBuilder = (
+  gameid: string,
+  moveId?: string,
+) => {
+  return {
+    request: moveId
+      ? `${commentPublishSubjects.request}.${gameid}.${moveId}`
+      : `${commentPublishSubjects.request}.${gameid}`,
+    response: `${commentPublishSubjects.response}.${gameid}`,
+  };
+};
+
+export interface CommentRequestEvent {
+  type: 'INTRO' | 'MOVE';
+  gameId: string;
+  persona: string;
+  previousComments: string[];
+
+  // далее если тип комментария MOVE
+  moveId?: string;
+  ply?: number;
+  author?: 'USER' | 'AI';
+  color?: 'white' | 'black';
+  san?: string;
+  historySan?: string[];
+  evalBeforeCp?: number | null;
+  evalAfterCp?: number | null;
+}
+
+export interface CommentResponseEvent {
+  gameId: string;
+  moveId?: string;
+  ply?: number;
+  type: 'INTRO' | 'MOVE';
+  text: string;
+}

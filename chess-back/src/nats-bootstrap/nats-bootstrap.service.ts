@@ -1,20 +1,34 @@
 import { NatsJetstreamService } from '@app/nats-jetstream';
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { chessStream } from 'interfaces/chess.streams';
+import { chessStream, commentStream } from 'interfaces/chess.streams';
 
 const streamSchemas = [
-  // Схема потока шахматных ходов
+  // Схема потока шахматных ходов (игрок походил - движок ответил)
   {
     name: chessStream.name,
     subjects: chessStream.subjects,
     consumers: [
       {
-        name: chessStream.consumers.aiWorker.durable,
-        filter: chessStream.consumers.aiWorker.filter,
+        name: chessStream.consumers.engineWorker.durable,
+        filter: chessStream.consumers.engineWorker.filter, // консьюмит Rust
       },
       {
-        name: chessStream.consumers.aiResponses.durable,
-        filter: chessStream.consumers.aiResponses.filter,
+        name: chessStream.consumers.engineResponses.durable, // консьюмит Nest
+        filter: chessStream.consumers.engineResponses.filter,
+      },
+    ],
+  },
+  {
+    name: commentStream.name,
+    subjects: commentStream.subjects,
+    consumers: [
+      {
+        name: commentStream.consumers.commentRequest.durable,
+        filter: commentStream.consumers.commentRequest.filter, // консьюмит python
+      },
+      {
+        name: commentStream.consumers.commentResponse.durable,
+        filter: commentStream.consumers.commentResponse.filter, // консьюмит nest
       },
     ],
   },

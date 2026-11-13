@@ -12,7 +12,11 @@ import { MoveDto } from './dto/move.dto';
 import { Game, GameStatus, moveRole } from 'generated/prisma';
 import { Figure, NAMES, ROOK_CASTLE, toColor } from 'interfaces/chess.types';
 import { OutboxService } from 'src/outbox/outbox.service';
-import { chessPublishSubjects } from 'interfaces/chess.streams';
+import {
+  chessPublishSubjects,
+  commentPublishSubjects,
+  CommentRequestEvent,
+} from 'interfaces/chess.streams';
 
 function computeMove(gameData: Game, dto: MoveDto) {
   const chess = new Chess(gameData.fen);
@@ -88,9 +92,31 @@ export class CoreGameLogicService {
         position: cell.square,
       }));
 
-    return this.prisma.game.create({
-      data: { fen: chess.fen(), figures: figures, aiColor: toColor('b') },
+    const gameCommented = this.prisma.$transaction(async (trans) => {
+      const game = await trans.game.create({
+        data: {
+          fen: chess.fen(),
+          figures: figures,
+          aiColor: toColor('b'),
+          persona:
+            'Надменный средневековый рыцарь: высокопарная речь, презирает слабых, восклицает.',
+        },
+      });
+
+      const event: CommentRequestEvent = {
+        type: 'INTRO',
+        gameId: game.id,
+        persona:
+          'Надменный средневековый рыцарь: высокопарная речь, презирает слабых, восклицает.',
+        previousComments: [],
+      };
+
+      await this.outbox.enqueue(trans, commentPublishSubjects.request, event);
+
+      return game;
     });
+
+    return gameCommented;
   }
 
   async makeAMove(gameId: string, dto: MoveDto) {
@@ -123,7 +149,7 @@ export class CoreGameLogicService {
       if (!updatedGame)
         throw new ConflictException('Версия партии изменилась, повторите');
 
-      await trans.move.create({
+      const createdMove = await trans.move.create({
         data: {
           gameId,
           ply: gameData.version + 1,
@@ -134,18 +160,36 @@ export class CoreGameLogicService {
         },
       });
 
-      const movesUciHistory = updatedGame.moves.map((m) => m.uci);
+      const last = await trans.move.findMany({
+        where: { gameId },
+        orderBy: { ply: 'desc' },
+        take: 10,
+        select: { san: true },
+      });
 
-      const event = {
+      const prev = await trans.move.findUnique({
+        where: { gameId_ply: { gameId, ply: createdMove.ply - 1 } },
+        select: { evalCp: true },
+      });
+
+      const event: CommentRequestEvent = {
+        type: 'MOVE',
         gameId: updatedGame.id,
+        persona:
+          'Надменный средневековый рыцарь: высокопарная речь, презирает слабых, восклицает.',
+        previousComments: updatedGame.comments.slice(-8),
 
-        version: updatedGame.version,
-        fen: updatedGame.fen,
-        color: updatedGame.turn,
-        history: movesUciHistory,
+        moveId: createdMove.id,
+        ply: createdMove.ply,
+        author: createdMove.role,
+        color: createdMove.color.toLocaleLowerCase() as 'white' | 'black',
+        san: createdMove.san,
+        historySan: last.map((m) => m.san).reverse(),
+        evalBeforeCp: prev?.evalCp ?? null,
+        evalAfterCp: null, // todo прикрутить сюда оценку движка rust
       };
 
-      await this.outbox.enqueue(trans, chessPublishSubjects.request, event);
+      await this.outbox.enqueue(trans, commentPublishSubjects.request, event);
       return updatedGame;
     });
 
@@ -168,6 +212,7 @@ export class CoreGameLogicService {
     dto: MoveDto,
     author: moveRole,
     expectedVersion?: number,
+    evalCp?: number,
   ) {
     const gameData = await this.prisma.game.findUnique({
       where: { id: gameId },
@@ -210,6 +255,7 @@ export class CoreGameLogicService {
           ply: gameData.version + 1,
           color: gameData.turn,
           role: author,
+          evalCp: evalCp,
           san: move.san,
           uci: move.from + move.to + (move.promotion ?? ''),
           fenAfter: chess.fen(),
