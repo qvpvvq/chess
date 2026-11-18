@@ -22,6 +22,7 @@ impl ParsedMove {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChessRequestEvent {
+    #[serde(rename = "gameId")]
     pub game_id: String,
     pub version: u64,
     pub fen: String, // снапшот всей доски

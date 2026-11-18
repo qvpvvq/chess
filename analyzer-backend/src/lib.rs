@@ -4,6 +4,8 @@ mod bot_play;
 mod errors;
 mod extractor;
 mod models;
+mod nats;
+mod pool;
 use crate::errors::AppError;
 use crate::models::{MoveAnalysis, ParsedMove};
 use analyzer::Analyzer;
@@ -12,6 +14,7 @@ use axum::extract::State;
 pub use std::sync::Arc;
 use tokio::sync::Mutex;
 pub type AppState = Arc<Mutex<Analyzer>>;
+
 pub async fn handle_analyze_full_game(
     State(state): State<AppState>,
     body: String,
@@ -35,4 +38,8 @@ fn handle_parse_pgn(pgn: &str) -> Result<Vec<ParsedMove>, AppError> {
     } else {
         Err(AppError::BadPgn("Не удалось распарсить PGN".to_string()))
     }
+}
+
+fn handle_bot_move() {
+    todo!()
 }

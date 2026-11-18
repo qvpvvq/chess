@@ -36,6 +36,7 @@ impl Analyzer {
             };
             let best_move = engine_output.best_move().to_string();
             let move_rate = engine_output.eval().value();
+            let evalll = engine_output.eval().eval_type();
             let result = MoveAnalysis {
                 ply: i + 1,
                 chessmove: ParsedMove::new(uci_move, mv.move_san),
