@@ -4,6 +4,7 @@ mod bot_play;
 mod errors;
 mod extractor;
 mod models;
+use extractor::GameMetadata;
 
 use crate::errors::AppError;
 use crate::models::{MoveAnalysis, ParsedMove};
@@ -18,25 +19,16 @@ pub async fn handle_analyze_full_game(
     State(state): State<AppState>,
     body: String,
 ) -> Result<Json<Vec<MoveAnalysis>>, AppError> {
-    println!("Запрос дошел");
+    println!("Ok: Запрос дошел");
     let mut analyzer = state.lock().await;
-    println!("Анализатор создан");
-    let moves = handle_parse_pgn(&body)?;
-    println!("{:?}", moves);
+    println!("Ok: Анализатор занят для анализа партии");
+    let (metadata, moves) = handle_parse_pgn(&body)?;
+    println!("{:#?} {:?}", metadata, moves);
     let analyzed_moves = analyzer.analyze_from_uci(moves)?;
     Ok(Json(analyzed_moves))
 }
-fn handle_parse_pgn(pgn: &str) -> Result<Vec<ParsedMove>, AppError> {
-    if let Some((_, moves)) = crate::extractor::parse_pgn(pgn) {
-        if moves.is_empty() {
-            return Err(AppError::BadPgn(
-                "Партия не содержит валидных ходов".to_string(),
-            ));
-        }
-        Ok(moves)
-    } else {
-        Err(AppError::BadPgn("Не удалось распарсить PGN".to_string()))
-    }
+fn handle_parse_pgn(pgn: &str) -> Result<(GameMetadata, Vec<ParsedMove>), AppError> {
+    extractor::parse_pgn(pgn)
 }
 
 fn handle_bot_move() {
