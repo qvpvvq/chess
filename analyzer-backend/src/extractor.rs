@@ -93,3 +93,79 @@ pub fn parse_pgn(pgn_str: &str) -> Result<(GameMetadata, Vec<ParsedMove>), AppEr
         .ok_or_else(|| AppError::ParserError("PGN не содержит игры".to_string()))?
         .map_err(|e| AppError::ParserError(format!("Некорректная партия: {e}")))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_pgn() {
+        let pgn = r#"
+        [Event "Live Chess"]
+        [Site "Chess.com"]
+        [Date "2026.11.19"]
+        [Round "?"]
+        [White "aza2sosal"]
+        [Black "AriiiiAdnan"]
+        [Result "1-0"]
+        [TimeControl "600"]
+        [WhiteElo "388"]
+        [BlackElo "393"]
+        [Termination "aza2sosal победил - соперник покинул партию"]
+        [Link "https://www.chess.com/game/187479872116"]
+
+        1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6 bxc6 5. Nxe5 d6 6. Nxc6 Qd7 7. Nd4 Qe7 8.
+        d3 Bh3 9. Qh5 Bxg2 10. Nf5 Qe5 11. Qg5 Bxh1 12. Bf4 Qxb2 13. Nd2 Qxa1+ 14. Ke2
+        h6 15. Qh5 g6 16. Qh3 gxf5 17. exf5 Nf6 18. Qf1 Qxa2 19. Qxh1 Bg7 20. Qxa8+ Ke7
+        21. Qc6 Ng4 22. f3 Nxh2 23. Bxh2 h5 24. Qxc7+ Kf6 25. Qxd6+ Kg5 26. Bf4+ Kh4 27.
+        Qe7+ Kh3 28. f6 Bxf6 29. Qxf6 Rg8 30. Nc4 Qxc2+ 31. Ke3 Re8+ 32. Ne5 Qc5+ 33.
+        Ke4 a5 34. Qf5+ Kg2 35. Qxf7 Rd8 36. Qxh5 a4 37. d4 Qc2+ 38. Ke3 a3 39. Qf7 a2
+        40. Qa7 Qc1+ 41. Ke4 a1=Q 42. Qg7+ Kf2 43. Nd3+ Ke2 44. Nxc1+ Qxc1 45. Qg2+ Kd1
+        46. Bxc1 Kxc1 47. Qg5+ Kc2 48. Qxd8 Kc3 49. Qc7+ Kd2 50. f4 Ke2 51. f5 1-0
+        "#;
+        let result = parse_pgn(pgn);
+        assert!(result.is_ok());
+    }
+    #[test]
+    fn test_empty_pgn() {
+        let pgn = "";
+        let result = parse_pgn(pgn);
+        assert!(result.is_err())
+    }
+    #[test]
+    fn test_illegal_pgn() {
+        let pgn = r#"
+        [BlackElo "393"]
+        [Termination "aza2sosal победил - соперник покинул партию"]
+        1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6 bxc6 5. Nxe5 d6 6. Nxc6 Qd7 7. Nd4 Qe7 8.
+        d3 Bh3 9. Qh5 Bxg2 10. Nf5 Qe5 11. Qg5 Bxh1 12. Bf4 Qxb2 13. Nd2 Qxa1+ 14. Ke2
+        h6 15. Qh5 g6 16. Qh3 gxf5 17. exf5 Nf6 18. Qf1 Qxa2 19. Qxh1 Bg7 20. Qxa8+ Ke7
+        21. Qc6 Ng4 22. f3 Nxh2 23. Bxh2 h5 24. Qxc7+ Kf6 25. Qxd6+ Kg5 26. Bf4+ Kh4 27.
+        Qe7+ Kh3 33.
+        Ke4 a5 34. Qf5+ Kg2 35. Qxf7 Rd8 36. Qxh5 a4 37. d4 Qc2+ 38. Ke3 a3 39. Qf7 a2
+        40. Qa7 Qc1+ 41. Ke4 a1=Q 42. Qg7+ Kf2 43. Nd3+ Ke2 44. Nxc1+ Qxc1 45. Qg2+ Kd1
+        46. Bxc1 Kxc1 47. Qg5+ Kc2 48. Qxd8 Kc3 49. Qc7+ Kd2 50. f4 Ke2 51. f5 1-0
+        "#; // ВЫРЕЗАНО ВСЕ С 28 ДО 33 ХОДА
+        let result = parse_pgn(pgn);
+        assert!(result.is_err())
+    }
+    #[test]
+    fn test_no_moves_pgn() {
+        let pgn = r#"
+    [Event "Live Chess"]
+    [Site "Chess.com"]
+    [Date "2026.11.19"]
+    [Round "?"]
+    [White "aza2sosal"]
+    [Black "AriiiiAdnan"]
+    [Result "1-0"]
+    [TimeControl "600"]
+    [WhiteElo "388"]
+    [BlackElo "393"]
+    [Termination "aza2sosal победил - соперник покинул партию"]
+    [Link "https://www.chess.com/game/187479872116"]
+    "#;
+        let result = parse_pgn(pgn);
+        assert!(result.is_err())
+    }
+}
