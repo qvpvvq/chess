@@ -4,8 +4,7 @@ mod bot_play;
 mod errors;
 mod extractor;
 mod models;
-mod nats;
-mod pool;
+
 use crate::errors::AppError;
 use crate::models::{MoveAnalysis, ParsedMove};
 use analyzer::Analyzer;

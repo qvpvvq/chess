@@ -31,22 +31,21 @@ impl Analyzer {
             let engine_output = self.engine.go().map_err(|_| {
                 AppError::EngineError("Движок не может сейчас проанализировать партию".to_string())
             })?;
-            if let Ok(_) = self.engine.play_move(&uci_move) {
-                println!("Сходило");
-            };
+            if self.engine.play_move(&uci_move).is_ok() {
+                println!("Сходило")
+            }
             let best_move = engine_output.best_move().to_string();
             let move_rate = engine_output.eval().value();
-            let evalll = engine_output.eval().eval_type();
             let result = MoveAnalysis {
                 ply: i + 1,
                 chessmove: ParsedMove::new(uci_move, mv.move_san),
-                best_move: best_move,
+                best_move,
                 eval: move_rate,
             };
 
             println!(
                 " {} ход, {} полуход: {} | Лучший ход: {} | Оценка позиции белых: {}",
-                (result.ply + 1) / 2,
+                result.ply.div_ceil(2),
                 result.ply,
                 result.chessmove.move_uci,
                 result.best_move,
