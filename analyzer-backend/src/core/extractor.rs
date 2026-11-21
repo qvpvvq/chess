@@ -1,7 +1,8 @@
-use crate::{errors::AppError, models::ParsedMove};
 use pgn_reader::{Reader, SanPlus, Visitor};
-use shakmaty::{Chess, Position, uci::UciMove};
+use shakmaty::{Chess, Position, fen::Fen, uci::UciMove};
 use std::ops::ControlFlow;
+
+use crate::{core::models::ParsedMove, errors::AppError};
 #[derive(Default, Debug)]
 pub struct GameMetadata {
     pub white: Option<String>,
@@ -62,6 +63,7 @@ impl Visitor for MovesStorage {
         movetext: &mut Self::Movetext,
         san_plus: SanPlus,
     ) -> ControlFlow<Self::Output> {
+        //todo: tracing в будущем
         let mv = match san_plus.san.to_move(&movetext.pos) {
             Ok(mv) => mv,
             Err(e) => {
@@ -87,11 +89,26 @@ pub fn parse_pgn(pgn_str: &str) -> Result<(GameMetadata, Vec<ParsedMove>), AppEr
         pos: Chess::default(),
         moves: Vec::new(),
     };
-    reader
+    let result = reader
         .read_game(&mut visitor)
-        .map_err(|e| AppError::ParserError(format!("Ошибка парсинга PGN: {e}")))?
-        .ok_or_else(|| AppError::ParserError("PGN не содержит игры".to_string()))?
-        .map_err(|e| AppError::ParserError(format!("Некорректная партия: {e}")))
+        .map_err(|e| AppError::BadPgn(format!("Ошибка парсинга PGN: {e}")))?
+        .ok_or_else(|| AppError::BadPgn("PGN не содержит игры".to_string()))?
+        .map_err(|e| AppError::BadPgn(format!("Некорректная партия: {e}")))?;
+    Ok(result)
+}
+
+pub fn parse_fen(fen: &str) -> Result<String, AppError> {
+    let fen: Fen = fen
+        .parse()
+        .map_err(|e| AppError::BadFen(format!("Невалидный FEN: {e}")))?;
+    let pos: Chess = fen
+        .into_position(shakmaty::CastlingMode::Standard)
+        .map_err(|e| AppError::BadFen(format!("Невалидный FEN: {e}")))?;
+    if pos.legal_moves().is_empty() {
+        return Err(AppError::BadFen("Нет возможных ходов".to_string()));
+    }
+    let full = Fen::from_position(&pos, shakmaty::EnPassantMode::Legal).to_string();
+    Ok(full)
 }
 
 #[cfg(test)]
@@ -124,7 +141,12 @@ mod tests {
         46. Bxc1 Kxc1 47. Qg5+ Kc2 48. Qxd8 Kc3 49. Qc7+ Kd2 50. f4 Ke2 51. f5 1-0
         "#;
         let result = parse_pgn(pgn);
-        assert!(result.is_ok());
+        let (meta, moves) = result.expect("valid_pgn распарсился с ошибкой");
+
+        assert_eq!(meta.white.as_deref(), Some("aza2sosal"));
+        assert_eq!(meta.black.as_deref(), Some("AriiiiAdnan"));
+        assert_eq!(meta.result.as_deref(), Some("1-0"));
+        assert_eq!(moves.len(), 101);
     }
     #[test]
     fn test_empty_pgn() {
@@ -166,6 +188,19 @@ mod tests {
     [Link "https://www.chess.com/game/187479872116"]
     "#;
         let result = parse_pgn(pgn);
+        assert!(result.is_err())
+    }
+
+    #[test]
+    fn test_malformed_san() {
+        let pgn = r#"
+            [Event "Test"]
+
+            1. e4 e25 2. Nf3 Nc6 *
+        "#;
+
+        let result = parse_pgn(pgn);
+        println!("Результат: {result:?}");
         assert!(result.is_err())
     }
 }
