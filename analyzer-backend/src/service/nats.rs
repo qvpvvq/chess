@@ -1,9 +1,10 @@
-mod nats_handlers;
+mod events;
+
 use crate::core::Analyzer;
+use crate::core::bot::bot_move;
 use crate::errors::AppError;
 use crate::service::events::ChessBotRequestEvent;
 use crate::service::handlers::AppState;
-use crate::service::nats::nats_handlers::nats_handle_bot_move;
 use async_nats::ConnectOptions;
 use async_nats::jetstream;
 use async_nats::jetstream::consumer::PullConsumer;
@@ -79,7 +80,7 @@ async fn process_message(subject: &str, msg: &[u8], state: AppState) -> Result<O
         subj if subj.ends_with(".bot") => {
             let request = serde_json::from_slice::<ChessBotRequestEvent>(msg)
                 .map_err(|e| AppError::InvalidNatsRequest(format!("Невалидный запрос {e}")))?;
-            let result = nats_handle_bot_move(Arc::clone(&state), request).await;
+            let result = bot_move(Arc::clone(&state), request).await;
             let subject = "chess.engine.response.bot".to_string();
             let response_json = serde_json::to_vec(&result)
                 .map_err(|e| AppError::InvalidNatsRequest(format!("Невалидный запрос {e}")))?;

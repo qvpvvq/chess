@@ -50,13 +50,6 @@ impl Visitor for MovesStorage {
             moves: Vec::new(),
         })
     }
-    // В конце партии возвращает теги и ходы в формате UCI
-    fn end_game(&mut self, movetext: Self::Movetext) -> Self::Output {
-        if movetext.moves.is_empty() {
-            return Err("PGN не содержит ходов".to_string());
-        }
-        Ok((movetext.meta, movetext.moves))
-    }
     // Обработка каждого хода
     fn san(
         &mut self,
@@ -80,6 +73,13 @@ impl Visitor for MovesStorage {
         ));
         movetext.pos.play_unchecked(mv);
         ControlFlow::Continue(())
+    }
+    // В конце партии возвращает теги и ходы в формате UCI
+    fn end_game(&mut self, movetext: Self::Movetext) -> Self::Output {
+        if movetext.moves.is_empty() {
+            return Err("PGN не содержит ходов".to_string());
+        }
+        Ok((movetext.meta, movetext.moves))
     }
 }
 pub fn parse_pgn(pgn_str: &str) -> Result<(GameMetadata, Vec<ParsedMove>), AppError> {

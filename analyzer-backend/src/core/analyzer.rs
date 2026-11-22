@@ -1,7 +1,7 @@
 use stockfish::{EvalType, Stockfish};
 
 use crate::{
-    core::models::{Eval, MoveAnalysis, ParsedMove},
+    core::models::{Eval, Move, MoveAnalysis, ParsedMove},
     errors::AppError,
 };
 pub struct Analyzer {
@@ -35,7 +35,7 @@ impl Analyzer {
             self.engine
                 .play_move(&uci_move)
                 .map_err(|e| AppError::EngineError(format!("Ошибка движка: {e}")))?;
-            
+
             println!("Сходило");
 
             let best_move = engine_output.best_move().to_string();
@@ -63,11 +63,15 @@ impl Analyzer {
         }
         Ok(results)
     }
-    pub fn get_move_from_fen(&mut self, fen: String) -> Result<(String, Eval), String> {
+
+    pub fn get_move_from_fen(&mut self, fen: String) -> Result<(Move, Eval), AppError> {
         self.engine
             .set_fen_position(&fen)
-            .map_err(|e| e.to_string())?;
-        let engine_move = self.engine.go().map_err(|e| e.to_string())?;
+            .map_err(|e| AppError::EngineError(e.to_string()))?;
+        let engine_move = self
+            .engine
+            .go()
+            .map_err(|e| AppError::EngineError(e.to_string()))?;
         let best_move = engine_move.best_move().to_owned();
 
         let eval_value = engine_move.eval().value();
