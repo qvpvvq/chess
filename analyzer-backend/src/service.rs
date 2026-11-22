@@ -2,5 +2,7 @@
 
 pub mod handlers;
 // pub mod nats;
-pub mod response_types;
+pub mod events;
+mod nats;
+
 pub use handlers::{handle_analyze_full_game, handle_bot_move};

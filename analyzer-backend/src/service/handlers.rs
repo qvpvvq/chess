@@ -3,7 +3,7 @@ use crate::core::extractor::GameMetadata;
 use crate::core::extractor::{parse_fen, parse_pgn};
 use crate::core::models::{MoveAnalysis, ParsedMove};
 use crate::errors::AppError;
-use crate::service::response_types::{ChessBotRequestEvent, ChessBotResponseEvent};
+use crate::service::events::{ChessBotResponseEvent, ChessBotRequestEvent};
 use axum::Json;
 use axum::extract::State;
 use std::sync::Arc;

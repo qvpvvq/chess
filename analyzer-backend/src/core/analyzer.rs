@@ -35,7 +35,7 @@ impl Analyzer {
             self.engine
                 .play_move(&uci_move)
                 .map_err(|e| AppError::EngineError(format!("Ошибка движка: {e}")))?;
-
+            
             println!("Сходило");
 
             let best_move = engine_output.best_move().to_string();
