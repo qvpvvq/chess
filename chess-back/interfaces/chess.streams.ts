@@ -42,7 +42,6 @@ export interface ChessRequestEvent {
   version: number;
   fen: string; // снапшот всей доски
   color: 'black' | 'white';
-  history: string[]; // история ходов в UCI формате
 }
 
 export type ChessResponseEvent =

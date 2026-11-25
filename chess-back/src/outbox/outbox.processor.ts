@@ -19,7 +19,7 @@ interface Claimed {
 function subjectBuilder(type: string, payload: any): string | undefined {
   switch (type) {
     case chessPublishSubjects.request:
-      return chessPublishSubjectsBuilder(payload.id).request;
+      return chessPublishSubjectsBuilder(payload.gameId).request;
     case commentPublishSubjects.request:
       if (payload.type === 'MOVE') {
         return commentPublishSubjectsBuilder(payload.gameId, payload.moveId)

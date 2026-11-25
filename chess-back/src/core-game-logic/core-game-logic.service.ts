@@ -14,6 +14,7 @@ import { Figure, NAMES, ROOK_CASTLE, toColor } from 'interfaces/chess.types';
 import { OutboxService } from 'src/outbox/outbox.service';
 import {
   chessPublishSubjects,
+  ChessRequestEvent,
   commentPublishSubjects,
   CommentRequestEvent,
 } from 'interfaces/chess.streams';
@@ -190,6 +191,15 @@ export class CoreGameLogicService {
       };
 
       await this.outbox.enqueue(trans, commentPublishSubjects.request, event);
+
+      // публикация совершенного хода в nats для получения ответного хода от Stockfish
+      await this.outbox.enqueue(trans, chessPublishSubjects.request, {
+        gameId: event.gameId,
+        version: updatedGame.version,
+        fen: updatedGame.fen,
+        color: createdMove.color.toLocaleLowerCase(),
+      } as ChessRequestEvent);
+
       return updatedGame;
     });
 
