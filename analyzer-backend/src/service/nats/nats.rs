@@ -15,7 +15,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 // pub use handlers;
-async fn run_nats(state: Arc<Mutex<Analyzer>>) -> Result<(), async_nats::Error> {
+pub async fn run_nats(state: Arc<Mutex<Analyzer>>) -> Result<(), async_nats::Error> {
     let options = ConnectOptions::new()
         .retry_on_initial_connect()
         .max_reconnects(None);

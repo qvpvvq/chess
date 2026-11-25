@@ -9,6 +9,8 @@ use std::env;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+use crate::service::nats::run_nats;
+
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
     dotenvy::dotenv().ok();
@@ -17,6 +19,7 @@ async fn main() -> Result<(), async_nats::Error> {
     let engine_path = Arc::new(format!("./bin/{}", engine_filename));
     let analyzer = Analyzer::new(&engine_path).expect("Не удалось запустить Stockfish");
     let state: Arc<Mutex<Analyzer>> = Arc::new(Mutex::new(analyzer));
+    run_nats(Arc::clone(&state)).await?;
     let app = Router::new()
         .route("/analyze_game", post(handle_analyze_full_game))
         .route("/fen", post(handle_bot_move))
