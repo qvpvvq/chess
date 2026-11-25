@@ -1,12 +1,13 @@
-use stockfish::Stockfish;
+use stockfish::{EvalType, Stockfish};
 
 use crate::{
+    core::models::{Eval, Move, MoveAnalysis, ParsedMove},
     errors::AppError,
-    models::{MoveAnalysis, ParsedMove},
 };
 pub struct Analyzer {
     engine: Stockfish,
 }
+
 impl Analyzer {
     pub fn new(path_to_engine: &str) -> Result<Self, AppError> {
         let mut engine = Stockfish::new(path_to_engine).map_err(|_| {
@@ -28,24 +29,32 @@ impl Analyzer {
             .map_err(|_| AppError::EngineError("Не удалось сбросить позицию".to_string()))?;
         for (i, mv) in moves.into_iter().enumerate() {
             let uci_move = mv.move_uci;
-            let engine_output = self.engine.go().map_err(|_| {
-                AppError::EngineError("Движок не может сейчас проанализировать партию".to_string())
+            let engine_output = self.engine.go().map_err(|e| {
+                AppError::EngineError(format!("Движку не удалось проанализировать ход: {e}"))
             })?;
-            if let Ok(_) = self.engine.play_move(&uci_move) {
-                println!("Сходило");
-            };
+            self.engine
+                .play_move(&uci_move)
+                .map_err(|e| AppError::EngineError(format!("Ошибка движка: {e}")))?;
+
+            println!("Сходило");
+
             let best_move = engine_output.best_move().to_string();
             let move_rate = engine_output.eval().value();
+            let eval = match engine_output.eval().eval_type() {
+                EvalType::Centipawn => Eval::Cp(move_rate),
+                EvalType::Mate => Eval::Mate(move_rate),
+            };
+
             let result = MoveAnalysis {
                 ply: i + 1,
                 chessmove: ParsedMove::new(uci_move, mv.move_san),
-                best_move: best_move,
-                eval: move_rate,
+                best_move,
+                eval,
             };
 
             println!(
-                " {} ход, {} полуход: {} | Лучший ход: {} | Оценка позиции белых: {}",
-                (result.ply + 1) / 2,
+                " {} ход, {} полуход: {} | Лучший ход: {} | Оценка позиции белых: {:?}",
+                result.ply.div_ceil(2),
                 result.ply,
                 result.chessmove.move_uci,
                 result.best_move,
@@ -54,5 +63,23 @@ impl Analyzer {
             results.push(result);
         }
         Ok(results)
+    }
+
+    pub fn get_move_from_fen(&mut self, fen: String) -> Result<(Move, Eval), AppError> {
+        self.engine
+            .set_fen_position(&fen)
+            .map_err(|e| AppError::EngineError(e.to_string()))?;
+        let engine_move = self
+            .engine
+            .go()
+            .map_err(|e| AppError::EngineError(e.to_string()))?;
+        let best_move = engine_move.best_move().to_owned();
+
+        let eval_value = engine_move.eval().value();
+        let eval: Eval = match &engine_move.eval().eval_type() {
+            EvalType::Centipawn => Eval::Cp(eval_value),
+            EvalType::Mate => Eval::Mate(eval_value),
+        };
+        Ok((best_move, eval))
     }
 }
