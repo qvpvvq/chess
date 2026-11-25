@@ -1,13 +1,14 @@
-mod events;
-
 use crate::core::Analyzer;
 use crate::core::bot::bot_move;
+use crate::core::models::AppState;
 use crate::errors::AppError;
-use crate::service::events::ChessBotRequestEvent;
-use crate::service::handlers::AppState;
+use crate::service::nats::events::NatsBotRequestEvent;
+use crate::service::nats::events::NatsBotResponseEvent;
+use crate::service::nats::nats_handlers::nats_bot_move;
 use async_nats::ConnectOptions;
 use async_nats::jetstream;
 use async_nats::jetstream::consumer::PullConsumer;
+use bytes::Bytes;
 use futures_util::StreamExt;
 use std::env;
 use std::sync::Arc;
@@ -69,7 +70,7 @@ async fn run_nats(state: Arc<Mutex<Analyzer>>) -> Result<(), async_nats::Error> 
     Ok(())
 }
 enum Outcome {
-    Reply { subject: String, payload: Vec<u8> },
+    Reply { subject: String, payload: Bytes },
     Skip,
 }
 async fn process_message(subject: &str, msg: &[u8], state: AppState) -> Result<Outcome, AppError> {
@@ -78,15 +79,14 @@ async fn process_message(subject: &str, msg: &[u8], state: AppState) -> Result<O
             todo!();
         }
         subj if subj.ends_with(".bot") => {
-            let request = serde_json::from_slice::<ChessBotRequestEvent>(msg)
+            let request = serde_json::from_slice::<NatsBotRequestEvent>(msg)
                 .map_err(|e| AppError::InvalidNatsRequest(format!("Невалидный запрос {e}")))?;
-            let result = bot_move(Arc::clone(&state), request).await;
-            let subject = "chess.engine.response.bot".to_string();
-            let response_json = serde_json::to_vec(&result)
-                .map_err(|e| AppError::InvalidNatsRequest(format!("Невалидный запрос {e}")))?;
+            let result: Bytes = nats_bot_move(Arc::clone(&state), request).await?;
+            let subject_response = "chess.engine.response.bot".to_string();
+
             Outcome::Reply {
-                payload: response_json,
-                subject,
+                payload: result,
+                subject: subject_response,
             }
         }
         _other => Outcome::Skip,

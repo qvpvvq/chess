@@ -29,8 +29,8 @@ impl Analyzer {
             .map_err(|_| AppError::EngineError("Не удалось сбросить позицию".to_string()))?;
         for (i, mv) in moves.into_iter().enumerate() {
             let uci_move = mv.move_uci;
-            let engine_output = self.engine.go().map_err(|_| {
-                AppError::EngineError("Движок не может сейчас проанализировать партию".to_string())
+            let engine_output = self.engine.go().map_err(|e| {
+                AppError::EngineError(format!("Движку не удалось проанализировать ход: {e}"))
             })?;
             self.engine
                 .play_move(&uci_move)
@@ -44,6 +44,7 @@ impl Analyzer {
                 EvalType::Centipawn => Eval::Cp(move_rate),
                 EvalType::Mate => Eval::Mate(move_rate),
             };
+
             let result = MoveAnalysis {
                 ply: i + 1,
                 chessmove: ParsedMove::new(uci_move, mv.move_san),

@@ -4,7 +4,7 @@ mod service;
 
 use axum::{Router, routing::post};
 use core::Analyzer;
-use service::{handle_analyze_full_game, handle_bot_move};
+use service::http::{handle_analyze_full_game, handle_bot_move};
 use std::env;
 use std::sync::Arc;
 use tokio::sync::Mutex;

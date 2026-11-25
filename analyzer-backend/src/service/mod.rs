@@ -1,7 +1,5 @@
 // RE-EXPORTS
 
-pub mod handlers;
-mod types;
+pub mod http;
+pub mod nats;
 // mod nats;
-
-pub use handlers::{handle_analyze_full_game, handle_bot_move};
