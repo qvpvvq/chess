@@ -1,7 +1,7 @@
 use stockfish::{EvalType, Stockfish};
 
 use crate::{
-    core::models::{Eval, MoveAnalysis, ParsedMove},
+    core::models::{Eval, Move, MoveAnalysis, ParsedMove},
     errors::AppError,
 };
 pub struct Analyzer {
@@ -29,8 +29,8 @@ impl Analyzer {
             .map_err(|_| AppError::EngineError("Не удалось сбросить позицию".to_string()))?;
         for (i, mv) in moves.into_iter().enumerate() {
             let uci_move = mv.move_uci;
-            let engine_output = self.engine.go().map_err(|_| {
-                AppError::EngineError("Движок не может сейчас проанализировать партию".to_string())
+            let engine_output = self.engine.go().map_err(|e| {
+                AppError::EngineError(format!("Движку не удалось проанализировать ход: {e}"))
             })?;
             self.engine
                 .play_move(&uci_move)
@@ -44,6 +44,7 @@ impl Analyzer {
                 EvalType::Centipawn => Eval::Cp(move_rate),
                 EvalType::Mate => Eval::Mate(move_rate),
             };
+
             let result = MoveAnalysis {
                 ply: i + 1,
                 chessmove: ParsedMove::new(uci_move, mv.move_san),
@@ -63,11 +64,15 @@ impl Analyzer {
         }
         Ok(results)
     }
-    pub fn get_move_from_fen(&mut self, fen: String) -> Result<(String, Eval), String> {
+
+    pub fn get_move_from_fen(&mut self, fen: String) -> Result<(Move, Eval), AppError> {
         self.engine
             .set_fen_position(&fen)
-            .map_err(|e| e.to_string())?;
-        let engine_move = self.engine.go().map_err(|e| e.to_string())?;
+            .map_err(|e| AppError::EngineError(e.to_string()))?;
+        let engine_move = self
+            .engine
+            .go()
+            .map_err(|e| AppError::EngineError(e.to_string()))?;
         let best_move = engine_move.best_move().to_owned();
 
         let eval_value = engine_move.eval().value();

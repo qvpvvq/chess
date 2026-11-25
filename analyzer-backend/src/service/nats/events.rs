@@ -1,7 +1,7 @@
 use crate::core::models::Eval;
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChessBotRequestEvent {
+pub struct NatsBotRequestEvent {
     #[serde(rename = "gameId")]
     pub game_id: String,
     pub version: u64,
@@ -19,7 +19,7 @@ pub enum Color {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum ChessBotResponseEvent {
+pub enum NatsBotResponseEvent {
     #[serde(rename_all = "camelCase")]
     Ok {
         game_id: String,
