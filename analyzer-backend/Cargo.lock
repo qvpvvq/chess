@@ -27,6 +27,7 @@ dependencies = [
  "shakmaty",
  "stockfish",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
