@@ -19,11 +19,16 @@ async fn main() -> Result<(), async_nats::Error> {
     let engine_path = Arc::new(format!("./bin/{}", engine_filename));
     let analyzer = Analyzer::new(&engine_path).expect("Не удалось запустить Stockfish");
     let state: Arc<Mutex<Analyzer>> = Arc::new(Mutex::new(analyzer));
-    run_nats(Arc::clone(&state)).await?;
+    let nats_state = Arc::clone(&state);
+    tokio::spawn(async move {
+        if let Err(e) = run_nats(nats_state).await {
+            eprintln!("NATS воркер упал: {e}");
+        }
+    });
     let app = Router::new()
         .route("/analyze_game", post(handle_analyze_full_game))
         .route("/fen", post(handle_bot_move))
-        .with_state(state);
+        .with_state(Arc::clone(&state));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
     Ok(())
