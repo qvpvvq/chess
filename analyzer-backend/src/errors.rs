@@ -8,11 +8,11 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum AppError {
-    BadPgn(String),      // Невалидный PGN (Вина клиента)
-    BadFen(String),      // Невалидный FEN (вина клиента)
-    EngineError(String), // Ошибка Стокфиша (вина сервера)
-    InvalidNatsRequest(String),
-    SerializationError(String), // битый JSON, неподдерживаемая тема: повтор не поможет
+    BadPgn(String),             // Невалидный PGN (Вина клиента)
+    BadFen(String),             // Невалидный FEN (вина клиента)
+    EngineError(String),        // Ошибка Стокфиша (вина сервера)
+    InvalidNatsRequest(String), // битый JSON, неподдерживаемая тема: повтор не поможет
+    SerializationError(String),
 }
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {

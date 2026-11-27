@@ -1,21 +1,17 @@
-use crate::core::Analyzer;
-use crate::core::bot::bot_move;
 use crate::core::models::AppState;
 use crate::errors::AppError;
 use crate::service::nats::events::NatsBotRequestEvent;
-use crate::service::nats::events::NatsBotResponseEvent;
 use crate::service::nats::nats_handlers::nats_bot_move;
 use async_nats::ConnectOptions;
 use async_nats::jetstream;
+use async_nats::jetstream::AckKind;
 use async_nats::jetstream::consumer::PullConsumer;
 use bytes::Bytes;
 use futures_util::StreamExt;
 use std::env;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
-// pub use handlers;
-pub async fn run_nats(state: Arc<Mutex<Analyzer>>) -> Result<(), async_nats::Error> {
+pub async fn run_nats(state: AppState) -> Result<(), async_nats::Error> {
     let options = ConnectOptions::new()
         .retry_on_initial_connect()
         .max_reconnects(None);
@@ -35,20 +31,23 @@ pub async fn run_nats(state: Arc<Mutex<Analyzer>>) -> Result<(), async_nats::Err
                 continue;
             }
         };
+        eprintln!(
+            "Получено сообщение: subject={}, payload={:?}",
+            msg.subject,
+            String::from_utf8_lossy(&msg.payload)
+        );
         let output: Outcome =
-            match process_message(msg.subject.as_str(), &msg.payload, state.clone()).await {
+            match process_message(msg.subject.as_str(), &msg.payload, Arc::clone(&state)).await {
                 Err(e) => {
-                    eprintln!("Ошибка чтения сообщения Jetstream {e}");
-                    if let Err(e) = msg.ack().await {
-                        eprintln!("Не удалось подтвердить входящее сообщение: {e}");
-                    }
+                    eprintln!("Ошибка сериализации входящего сообщения {e}");
+                    ack(&msg, AckKind::Term).await;
                     continue;
                 }
                 Ok(output) => output,
             };
         match output {
             Outcome::Reply { subject, payload } => {
-                let ack_future = match jetstream.publish(subject, payload.into()).await {
+                let ack_future = match jetstream.publish(subject, payload).await {
                     Ok(f) => f,
                     Err(e) => {
                         eprintln!("Ошибка публикации сообщения {e}");
@@ -59,24 +58,24 @@ pub async fn run_nats(state: Arc<Mutex<Analyzer>>) -> Result<(), async_nats::Err
                     eprintln!("Сервер не подтвердил запись ответа: {e}");
                     continue;
                 }
+                ack(&msg, AckKind::Ack).await;
+                eprintln!("Сообщение подтверждено")
             }
-            Outcome::Skip => {
-                if let Err(e) = msg.ack().await {
-                    eprintln!("Не удалось подтвердить входящее сообщение: {e}");
-                }
-            }
+            Outcome::Terminate => ack(&msg, AckKind::Term).await,
         }
     }
     Ok(())
 }
 enum Outcome {
     Reply { subject: String, payload: Bytes },
-    Skip,
+    Terminate,
 }
+
 async fn process_message(subject: &str, msg: &[u8], state: AppState) -> Result<Outcome, AppError> {
     let response: Outcome = match subject {
         subj if subj.ends_with(".analysis") => {
-            todo!();
+            eprintln!("analysis пока не реализован, subject={subj}");
+            Outcome::Terminate
         }
         subj if subj.ends_with(".bot") => {
             let request = serde_json::from_slice::<NatsBotRequestEvent>(msg)
@@ -89,7 +88,15 @@ async fn process_message(subject: &str, msg: &[u8], state: AppState) -> Result<O
                 subject: subject_response,
             }
         }
-        _other => Outcome::Skip,
+        _other => {
+            eprintln!("Неизвестный subject, terminated: {subject}");
+            Outcome::Terminate
+        }
     };
     Ok(response)
+}
+async fn ack(msg: &jetstream::Message, kind: AckKind) {
+    if let Err(e) = msg.ack_with(kind).await {
+        eprintln!("Не удалось подтвердить сообщение ({kind:?}): {e}");
+    }
 }
